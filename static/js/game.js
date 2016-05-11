@@ -8,8 +8,7 @@ var ctx;
 
 
 function onLoad() {
-   console.log("load document ready");
-   
+   console.log("load document ready");   
    canvas = document.getElementById("canvas");
    console.log("canvas-width = " + canvas.width + ", canvas-height = " + canvas.height);   
    
@@ -19,9 +18,8 @@ function onLoad() {
    totalBlocks = widthInBlocks * heightInBlocks;
    
    ctx = canvas.getContext("2d");   
-   game = new Game(createSnake(), createFood());
-   paintScreen();
-      
+   game = createGame();
+   paintScreen();      
 };
 
 
@@ -37,7 +35,7 @@ function Point(x, y) {
 var SnakeMoveResults = {
     NO_INCIDENCE: 0,
     FOOD_CONSUMED: 1,
-    SELF_COLLISION: 2
+    COLLISION: 2
 }
 
 function Snake(tailBlock, initialLength, color) {
@@ -45,18 +43,28 @@ function Snake(tailBlock, initialLength, color) {
     this.blocks = [];
     this.direction = 'r';
     this.color = color;
-    this.dirSet = [['r', 'l'], ['u', 'd']];  
+    this.dirSet = [['r', 'l'], ['u', 'd']];
+    this.pendingInstructions = [];
+    
+    this.addInstruction = function (direction) {
+        this.pendingInstructions.push(direction);
+    }
     
     for (var i = 0; i < initialLength; i++) {
         this.blocks.push(tailBlock + i);
     }  
     
-    this.move = function (food) {
+    this.move = function (food, obstructions) {
         // console.log("Moving snake ...");
         var nextHead;
         var currentHead = this.blocks[this.blocks.length -1];
         var currentRow = Math.floor(currentHead / widthInBlocks);
-        var currentCol = currentHead % widthInBlocks;        
+        var currentCol = currentHead % widthInBlocks;  
+        var pendingDirection = this.pendingInstructions.shift();
+        if (pendingDirection) {
+            this.changeDirection(pendingDirection);
+        }      
+        
         switch(this.direction) {
             case 'r':                
                 currentCol = currentCol + 1 >= widthInBlocks ? 0 : currentCol + 1;
@@ -80,7 +88,10 @@ function Snake(tailBlock, initialLength, color) {
         } else if (this.blocks.indexOf(nextHead) >= 0) {
             // TODO : this is a naive way of detecting collision
             // check if we can do it more efficiently
-            result = SnakeMoveResults.SELF_COLLISION;
+            result = SnakeMoveResults.COLLISION;
+        } else if (obstructions.has(nextHead)) {
+            // collision with an obstruction
+            result = SnakeMoveResults.COLLISION;
         } else {
             this.blocks.shift();
             this.blocks.push(nextHead);
@@ -89,18 +100,17 @@ function Snake(tailBlock, initialLength, color) {
         return result;
     }
     
-    this.changeDirection = function (newDirection) {
-        var that = this;
-        var findDirSetIndex = function (direction) {
-            for (var i = 0; i < that.dirSet.length; i++) {
-                if (that.dirSet[i].indexOf(direction) >= 0) {
+    this.changeDirection = function (newDirection) {        
+        var findDirSetIndex = function (direction, dirSet) {
+            for (var i = 0; i < dirSet.length; i++) {
+                if (dirSet[i].indexOf(direction) >= 0) {
                     return i;
                 }
             }
             return -1;
         }
-        var i1 = findDirSetIndex(this.direction);
-        var i2 = findDirSetIndex(newDirection);
+        var i1 = findDirSetIndex(this.direction, this.dirSet);
+        var i2 = findDirSetIndex(newDirection, this.dirSet);
         console.log('i1 = ' + i1 + ', i2 = ' + i2);
         if (i1 !== i2) {
             this.direction = newDirection;
@@ -117,18 +127,28 @@ var GameState = {
 }
 
 
-function Game(snake, food) {
-    this.snake = snake;
-    this.food = food;  // food is represented by an integer (the block index of the food block)
+function Game(snake) {
+    this.snake = snake;    
+    this.obstructions = createObstructions();
+    
+    this.createFood = function () {
+        var food = Math.floor(Math.random() * totalBlocks);
+        while(this.obstructions.has(food) || this.snake.blocks.indexOf(food) != -1) {
+            food = Math.floor(Math.random() * totalBlocks);
+        }
+        return food;
+    }
+        
+    this.food = this.createFood();  // food is represented by an integer (the block index of the food block)
     this.score = 0;
     this.numFoodConsumed = 0;
     this.state = GameState.NOT_STARTED;
-    this.jobId = -1;
+    this.jobId = -1;   
     
     this.onFoodConsumed = function () {
         this.numFoodConsumed += 1;
         this.score += this.numFoodConsumed;
-        this.food = createFood();
+        this.food = this.createFood();
     }
     
     this.onSnakeCollision = function () {
@@ -153,32 +173,32 @@ function Game(snake, food) {
                 case 37:
                     // left
                     console.log('Left key pressed');
-                    that.snake.changeDirection('l');
+                    that.snake.addInstruction('l');
                     break;
                 case 39:
                     // right
                     console.log('Right key pressed');
-                    that.snake.changeDirection('r');
+                    that.snake.addInstruction('r');
                     break;
                 case 38:
                     // up
                     console.log('Up key pressed');
-                    that.snake.changeDirection('u');
+                    that.snake.addInstruction('u');
                     break;
                 case 40:
                     // down
                     console.log('Down key pressed');
-                    that.snake.changeDirection('d');
+                    that.snake.addInstruction('d');
                     break;
             } 
         });        
         
         var refreshSnake = function () {
-            var result = that.snake.move(that.food);
+            var result = that.snake.move(that.food, that.obstructions);
             if (result === SnakeMoveResults.FOOD_CONSUMED) {
                 // food is consumed
                 that.onFoodConsumed();
-            } else if (result === SnakeMoveResults.SELF_COLLISION) {
+            } else if (result === SnakeMoveResults.COLLISION) {
                 that.onSnakeCollision();
             }
             paintScreen();
@@ -188,22 +208,62 @@ function Game(snake, food) {
     }
 }
 
-
-var createFood = function () {
-    return Math.floor(Math.random() * totalBlocks);
-}
-
-
 var createSnake = function () {
-    var snakePosition = widthInBlocks * Math.floor(heightInBlocks / 2) + Math.floor(widthInBlocks / 4);
-    var initialLength = 5;
-    var color = "#0A0909";
+    var initialLength = 6;
+    var snakePosition = widthInBlocks * Math.floor(heightInBlocks / 2) + Math.floor(widthInBlocks / 2) - Math.floor(initialLength / 2);    
+    var color = "#1F618D";
     return new Snake(snakePosition, initialLength, color);
 }
 
 
 var createGame = function () {
-    return new Game(createSnake(), createFood());
+    return new Game(createSnake());
+}
+
+
+var createObstructions = function () {
+    // TODO simplify    
+    var width = Math.floor(widthInBlocks / 7);
+    var r1, r2, r3, r4;
+    r1 = Math.floor (1.5 * heightInBlocks / 8);
+    r2 = Math.floor (2.5 * heightInBlocks / 8);   
+    r3 = heightInBlocks - r2;
+    r4 = heightInBlocks - r1;
+    
+    var rows = [[r2, r3], [r1, r4], [r2, r3]];  
+    
+    var n = 3;
+    var margin = Math.floor(.10 * widthInBlocks);
+    var effectiveWidth = Math.floor((widthInBlocks - 2*margin) / n);
+    var diff = Math.floor((effectiveWidth - width)/2);
+    
+    var cols = [];
+    for (var i=0; i<n; i++) {
+        var c = margin + i*effectiveWidth;
+        cols[i] = c + diff;
+    }
+    
+    var s1 = new Set();
+    for (var i=0; i<n; i++) {
+        for (var j=0; j<width; j++) {
+            s1.add(cols[i] + j + (widthInBlocks * rows[i][0]));
+            s1.add(cols[i] + j + (widthInBlocks * rows[i][1]));   
+        }        
+    }  
+    
+    var c1 = cols[0] + Math.floor(width / 2);
+    var c2 = cols[cols.length - 1] + Math.floor(width / 2);
+    
+    var r = Math.floor((r3 + r2) / 2 - width/2);
+    for (var i=0; i<width; i++) {
+        s1.add((r+i)*widthInBlocks + c1);
+    }
+    
+    for (var i=0; i<width; i++) {
+        s1.add((r+i)*widthInBlocks + c2);
+    } 
+    
+    return s1;    
 }
 
 
@@ -227,7 +287,7 @@ var paintScreen = function () {
     }
     
     // Draw the canvas
-    paintRect("#00FFFF", 0, 0, canvas.width, canvas.height);
+    paintRect("#D0D3D4", 0, 0, canvas.width, canvas.height);
     
     // Draw the snake
     var snake = game.snake;
@@ -235,15 +295,21 @@ var paintScreen = function () {
         var p = blockIndexToCoordinate(blockIndex);
         paintRect(snake.color, p.x, p.y, blockSize, blockSize);
     });
+    
+    // Draw obstructions
+    game.obstructions.forEach(function (blockIndex) {
+        var p = blockIndexToCoordinate(blockIndex);
+        paintRect("#17202A", p.x, p.y, blockSize, blockSize);
+    });
         
     if (game.state !== GameState.NOT_STARTED) {
         // Draw the food
         var p = blockIndexToCoordinate(game.food);
-        paintRect('#C11A25', p.x, p.y, blockSize, blockSize);
+        paintRect('#1D8348', p.x, p.y, blockSize, blockSize);
         
         // Draw the score
         ctx.font = "15px Consolas";
-        ctx.fillText("SCORE: " + game.score, 350, 40);
+        ctx.fillText("SCORE: " + game.score, 350, 40);        
     }    
     
     if (game.state === GameState.COMPLETED) {

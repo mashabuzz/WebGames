@@ -1,18 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>HTML5 Canvas Snake Game</title>
-<meta charset="UTF-8">
+    <title>HTML5 Canvas Snake Game</title>
+    <meta charset="UTF-8">
+    
+    <style>
+         #canvas{border:1px solid black;}
+      </style>
+    
 </head>
 
 <body onload="onLoad()">
-<h1>nokia-snake</h1>
+<h1 align='center'>nokia-snake</h1>
 
-<div>
+<div align='center'>
     <canvas id="canvas" width="450" height="450"></canvas>    
 </div>
 
-<button id="startButton" onclick="startGame()">start</button>
+<div align='center'>
+    <button id="startButton" onclick="startGame()">start</button>
+</div>
 
 <script type="text/javascript" src="js\game.js"></script>
 </body>

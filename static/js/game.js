@@ -211,7 +211,7 @@ function Game(snake) {
 var createSnake = function () {
     var initialLength = 6;
     var snakePosition = widthInBlocks * Math.floor(heightInBlocks / 2) + Math.floor(widthInBlocks / 2) - Math.floor(initialLength / 2);    
-    var color = "#1F618D";
+    var color = "#17202A";
     return new Snake(snakePosition, initialLength, color);
 }
 
@@ -244,25 +244,29 @@ var createObstructions = function () {
     }
     
     var s1 = new Set();
+    // horizontal walls
     for (var i=0; i<n; i++) {
         for (var j=0; j<width; j++) {
-            s1.add(cols[i] + j + (widthInBlocks * rows[i][0]));
-            s1.add(cols[i] + j + (widthInBlocks * rows[i][1]));   
+            s1.add(twoDtoOneDBlockIndex(rows[i][0]-1, cols[i] + j));
+            s1.add(twoDtoOneDBlockIndex(rows[i][0], cols[i] + j));
+            
+            s1.add(twoDtoOneDBlockIndex(rows[i][1], cols[i] + j));   
+            s1.add(twoDtoOneDBlockIndex(rows[i][1]+1, cols[i] + j));         
         }        
-    }  
+    }    
     
     var c1 = cols[0] + Math.floor(width / 2);
     var c2 = cols[cols.length - 1] + Math.floor(width / 2);
     
     var r = Math.floor((r3 + r2) / 2 - width/2);
+    // vertical walls
     for (var i=0; i<width; i++) {
-        s1.add((r+i)*widthInBlocks + c1);
+        s1.add(twoDtoOneDBlockIndex(r+i, c1-1));
+        s1.add(twoDtoOneDBlockIndex(r+i, c1));
+        
+        s1.add(twoDtoOneDBlockIndex(r+i, c2));
+        s1.add(twoDtoOneDBlockIndex(r+i, c2+1));        
     }
-    
-    for (var i=0; i<width; i++) {
-        s1.add((r+i)*widthInBlocks + c2);
-    } 
-    
     return s1;    
 }
 
@@ -278,6 +282,10 @@ var coordinateToBlockIndex = function (x, y) {
     return Math.floor(y / blockSize) * widthInBlocks + Math.floor(x / blockSize);
 }
 
+var twoDtoOneDBlockIndex = function (row, col) {
+    return row * widthInBlocks + col;
+}
+
 
 var paintScreen = function () {
     
@@ -287,7 +295,7 @@ var paintScreen = function () {
     }
     
     // Draw the canvas
-    paintRect("#D0D3D4", 0, 0, canvas.width, canvas.height);
+    paintRect("#FAFAFA", 0, 0, canvas.width, canvas.height);
     
     // Draw the snake
     var snake = game.snake;
@@ -299,7 +307,7 @@ var paintScreen = function () {
     // Draw obstructions
     game.obstructions.forEach(function (blockIndex) {
         var p = blockIndexToCoordinate(blockIndex);
-        paintRect("#17202A", p.x, p.y, blockSize, blockSize);
+        paintRect("#1F618D", p.x, p.y, blockSize, blockSize);
     });
         
     if (game.state !== GameState.NOT_STARTED) {

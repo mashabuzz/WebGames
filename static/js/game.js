@@ -129,6 +129,7 @@ var GameState = {
 
 function Game(snake) {
     this.snake = snake;    
+    this.startTime = null;
     this.obstructions = createObstructions();
     
     this.createFood = function () {
@@ -158,9 +159,11 @@ function Game(snake) {
         console.log("score = " + this.score);
         // display startGame button
         document.getElementById('startButton').style.visibility = '';
+        postScoreToServer('rahul', this.score, this.startTime, new Date());
     }
     
     this.startGame = function () {
+        this.startTime = new Date();
         // Add key listeners
         this.state = GameState.STARTED;
         
@@ -325,6 +328,19 @@ var paintScreen = function () {
         ctx.font = "30px Arial";
         ctx.fillText("GAME OVER", 120, 230);
     }
+}
+
+
+function postScoreToServer(userId, score, startTime, endTime) {    
+    $.ajax({
+        type: 'POST',              
+        url: 'scores',
+        contentType: 'application/json',  
+        data: JSON.stringify({'score': score, 'userId': userId, 'game': 'nokia-snake', 'start_time': startTime, 'end_time': endTime}),
+        success: function() {
+            console.log('Successfully posted data to server');
+        }
+    });
 }
 
 

@@ -7,11 +7,19 @@ var sqlite3 = require('sqlite3').verbose();
 
 var app = express();
 
-app.use(express.static('static'));
-app.use(express.static(path.join(__dirname, 'bower_components')))
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
+app.use(express.static(path.join(__dirname, 'bower_components')));
+app.use(express.static(path.join(__dirname, 'js')));
+app.use(express.static(path.join(__dirname, 'views/htmls')));
 
 // parse application/json
 app.use(bodyParser.json())
+
+app.get('/snake-single-player', (req, res) => {
+    res.render('htmls/snake-single-player');
+});
 
 app.post('/scores', (req, res) => {
     var userName = 'rahul.p';

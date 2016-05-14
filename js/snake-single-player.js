@@ -213,7 +213,7 @@ function Game(snake) {
 
 var createSnake = function () {
     var initialLength = 6;
-    var snakePosition = widthInBlocks * Math.floor(heightInBlocks / 2) + Math.floor(widthInBlocks / 3) - Math.floor(initialLength / 2);    
+    var snakePosition = twoDtoOneDBlockIndex(2, 2);    
     var color = "#17202A";
     return new Snake(snakePosition, initialLength, color);
 }

@@ -17,9 +17,6 @@ app.use(express.static(path.join(__dirname, 'views/htmls')));
 // parse application/json
 app.use(bodyParser.json())
 
-app.get('/snake-single-player', (req, res) => {
-    res.render('htmls/snake-single-player');
-});
 
 app.post('/scores', (req, res) => {
     var userName = 'rahul.p';

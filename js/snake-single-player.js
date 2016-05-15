@@ -326,7 +326,7 @@ var paintScreen = function () {
     if (game.state === GameState.COMPLETED) {
         // Draw GAME OVER
         ctx.font = "30px Arial";
-        ctx.fillText("GAME OVER", 120, 230);
+        ctx.fillText("GAME OVER", 130, 230);
     }
 }
 

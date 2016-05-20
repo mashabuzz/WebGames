@@ -3,6 +3,7 @@
 var express = require('express');
 var path = require('path');
 var http = require('http');
+var url = require('url');
 var bodyParser = require('body-parser');
 var cookieParser = require('cookie-parser');
 var expressSession = require('express-session');
@@ -160,13 +161,37 @@ app.post('/register', (req, res) => {
 
 
 app.get('/snake-single-player', (req, res) => {
+    var gameName = 'vintage-snake';
     if (!req.isAuthenticated()) {
         res.redirect('/login');
     } else {
-        res.render('snake-single-player', {
-            user: req.user
-        });    
+        getTopScores(req.user.id, 5, gameName, (data) => {
+            res.render('snake-single-player', {
+                gameName: gameName,
+                user: req.user,
+                rows: data
+            });
+        });
     }        
+});
+
+
+/**
+ * Gets the top scores for the user
+ */
+app.get('/scores', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.status(401).send('Unauthorized');
+    } else {
+        
+        var urlQueryParams = url.parse(req.url, true).query;
+        var count = urlQueryParams.count || 5;
+        var gameName = urlQueryParams.gameName;        
+        getTopScores(req.user.id, count, gameName, (data) => {
+            res.header("Content-Type", "application/json");
+            res.send(JSON.stringify({items: data}));
+        }); 
+    }       
 });
 
 
@@ -193,3 +218,24 @@ app.post('/scores', (req, res) => {
 app.listen(3000, '0.0.0.0', () => {
     console.log('Express app listening on port 3000');
 });
+
+
+function getTopScores(userid, count, gameName, callback) {
+    db.serialize(() => {            
+            var query = `select date(starttime) as date, score as score, (strftime('%s', endtime) - strftime('%s', starttime))` + 
+                            `as duration from scores where userid=${userid} and gamename='${gameName}' order by score desc limit ${count}`;
+            console.log(`query = ${query}`);
+            
+            db.all(query, (err, rows) => {
+                var items = [];
+                for (var i = 0; i < rows.length; i++) {
+                    items.push({
+                        date: rows[i].date,
+                        score: rows[i].score,
+                        duration: rows[i].duration
+                    });
+                }
+                callback(items);
+            });         
+        }); 
+}

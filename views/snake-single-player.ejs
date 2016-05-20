@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="bootstrap/dist/css/bootstrap.css">    
 </head>
 
-<body onload="onLoad()">
+<body>
 
 <div align='right'>
     Welcome <%= user.username%>  <a href='/logout'>Logout</a>
@@ -26,6 +26,16 @@
 <script src="jquery/dist/jquery.js"></script>
 <script src="bootstrap/dist/js/bootstrap.js"></script>
 <script src="snake-single-player.js"></script>
+
+<script>
+
+$(document).ready(function() {
+
+    onLoad();
+    
+});
+
+</script>
 
 </body>
 

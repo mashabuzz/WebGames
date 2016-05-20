@@ -3,6 +3,7 @@
 var express = require('express');
 var path = require('path');
 var http = require('http');
+var url = require('url');
 var bodyParser = require('body-parser');
 var cookieParser = require('cookie-parser');
 var expressSession = require('express-session');
@@ -167,6 +168,37 @@ app.get('/snake-single-player', (req, res) => {
             user: req.user
         });    
     }        
+});
+
+
+/**
+ * Gets the top scores for the user
+ */
+app.get('/scores', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.status(401).send('Unauthorized');
+    } else {
+        db.serialize(() => {
+            var urlQueryParams = url.parse(req.url, true).query;
+            var count = urlQueryParams.count || 5;
+            var query = `select date(starttime) as date, score as score, (strftime('%s', endtime) - strftime('%s', starttime))` + 
+                            `as duration from scores where userid=${req.user.id} order by score desc limit ${count}`;
+            console.log(`query = ${query}`);
+            
+            db.all(query, (err, rows) => {
+                var items = [];
+                for (var i = 0; i < rows.length; i++) {
+                    items.push({
+                        date: rows[i].date,
+                        score: rows[i].score,
+                        duration: rows[i].duration
+                    });
+                }
+                res.header("Content-Type", "application/json");
+                res.send(JSON.stringify({items: items}));
+            });         
+        }); 
+    }       
 });
 
 

@@ -172,13 +172,6 @@ app.get('/snake-single-player', (req, res) => {
                 rows: data
             });
         });
-        
-        
-        /**
-        res.render('snake-single-player', {
-            user: req.user
-        });
-        */    
     }        
 });
 

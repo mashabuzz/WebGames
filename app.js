@@ -2,6 +2,7 @@
 
 var express = require('express');
 var path = require('path');
+var http = require('http');
 var bodyParser = require('body-parser');
 var cookieParser = require('cookie-parser');
 var expressSession = require('express-session');
@@ -34,6 +35,20 @@ app.use(expressSession({
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+var nextUserId;
+
+(function init() {
+    var query = "select max(id) as id from users";
+    db.all(query, (err, rows) => {
+        if (rows.length === 0) {
+            nextUserId = 1;
+        } else {
+            nextUserId = rows[0].id + 1;
+        }
+        console.log(`NextUserId = ${nextUserId}`);
+    });
+})();
 
 
 passport.use(new passportLocal.Strategy((username, password, done) => {
@@ -118,7 +133,29 @@ app.get('/register', (req, res) => {
 app.post('/register', (req, res) => {
    // check if the username already exists then send 406 (Not Acceptable)
    var username = req.body.username;
-   res.status(406).send(`Username ${username} already exists`); 
+   var password = req.body.password;
+   if (!username) {
+       res.status(406).send(`Username is empty`);
+   } else if (!password) {
+       res.status(406).send(`Password is empty`);
+   } else if (password.length < 3) {
+       res.status(406).send(`Password is too short, needs to be atleast 3 characters`);
+   } else {
+       db.serialize(() => {           
+           var query = `SELECT id, username, password FROM users WHERE username='${username}'`;
+           console.log(`query = ${query}`);
+           db.all(query, (err, rows) => {
+               if(rows.length === 0) {
+                   var stmt = db.prepare(`INSERT INTO USERS VALUES (?, ?, ?)`);
+                   stmt.run(nextUserId++, username, password);
+                   stmt.finalize();
+                   res.redirect('/login');
+               } else {
+                   res.status(406).send(`Username ${username} already exists`);                   
+               }
+           });
+       });
+   }  
 });
 
 

@@ -336,7 +336,7 @@ function postScoreToServer(userId, score, startTime, endTime) {
         type: 'POST',              
         url: 'scores',
         contentType: 'application/json',  
-        data: JSON.stringify({'score': score, 'userId': userId, 'game': 'nokia-snake', 'start_time': startTime, 'end_time': endTime}),
+        data: JSON.stringify({'score': score, 'userId': userId, 'game': 'vintage-snake', 'start_time': startTime, 'end_time': endTime}),
         success: function() {
             console.log('Successfully posted data to server');
         }

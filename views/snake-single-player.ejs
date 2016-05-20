@@ -1,9 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>HTML5 Canvas Snake Game</title>
+    <title>WebGames</title>
     <meta charset="UTF-8">    
-    <style>#canvas{border:1px solid black;}</style>
+    <style>
+    #canvas{border:1px solid black;}    
+    .tg  {border-collapse:collapse;border-spacing:0;}
+    .tg td{font-family:Arial, sans-serif;font-size:14px;padding:5px 10px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;}
+    .tg th{font-family:Arial, sans-serif;font-size:14px;font-weight:normal;padding:5px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;}
+    .tg .tg-yw4l{vertical-align:top}    
+    </style>
     <link rel="stylesheet" href="bootstrap/dist/css/bootstrap.css">    
 </head>
 
@@ -14,13 +20,35 @@
 </div>
 
 <div align='center'>
-    <h1>nokia-snake</h1>
+    <h1><%= gameName %></h1>
     <p>Use the up/down/left/right keys to manuver the snake around and feed it.<br>
     Avoid colliding with the walls. <br>
     Click on the start button to start the game
     </p>
     <canvas id="canvas" width="450" height="450"></canvas><br>
     <button id="startButton" onclick="startGame()">start</button>    
+</div>
+<br>
+<br>
+<div align='center'>
+<h3>Your Top Scores</h3>
+<table class="tg">
+  <tr>
+    <th class="tg-yw4l">date</th>
+    <th class="tg-yw4l">score</th>
+    <th class="tg-yw4l">duration</th>
+  </tr>
+  <% for (var i=0; i < rows.length; i++) { %>
+        
+        <tr>
+            <td class="tg-yw4l"><%= rows[i].date %></td>
+            <td class="tg-yw4l"><%= rows[i].score %></td>
+            <td class="tg-yw4l"><%= rows[i].duration %> secs</td>
+        </tr>
+  
+  <% } %>
+  
+</table>
 </div>
 
 <script src="jquery/dist/jquery.js"></script>

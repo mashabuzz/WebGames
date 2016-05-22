@@ -100,9 +100,21 @@ passport.deserializeUser((session, done) => {
 });
 
 
+app.get('/', (req, res) => {
+    if (!req.isAuthenticated()) {
+        res.redirect('/login');
+    } else {
+        res.render('index');
+    }    
+});
+
+
 app.get('/login', (req, res) => {
-    // TODO Check if request is already authenticated
-    res.render('login');      
+    if (req.isAuthenticated()) {
+        res.redirect('/');
+    } else {
+        res.render('login');    
+    }          
 });
 
 
@@ -114,7 +126,7 @@ app.get('/logout', (req, res) => {
 
 app.post('/login', passport.authenticate('local'), (req, res) => {
     if (req.isAuthenticated()) {
-        res.redirect('/snake-single-player');
+        res.redirect('/');
     } else {
         res.send('Authentication Failed');
     }
@@ -124,7 +136,7 @@ app.post('/login', passport.authenticate('local'), (req, res) => {
 
 app.get('/register', (req, res) => {
     if (req.isAuthenticated()) {
-        res.redirect('/snake-single-player');
+        res.redirect('/');
     } else {
         res.render('register');   
     }     

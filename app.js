@@ -104,7 +104,7 @@ app.get('/', (req, res) => {
     if (!req.isAuthenticated()) {
         res.redirect('/login');
     } else {
-        res.render('index');
+        res.render('index', {user: req.user});
     }    
 });
 

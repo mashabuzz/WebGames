@@ -64,7 +64,8 @@ function UserDao() {
                 if (rows.length > 0) {
                     // username already exists
                     var row = rows[0];
-                    callback(null, new User(row.id, row.username, row.password));
+                    var duplicateUser = new User(row.id, row.username, row.password);
+                    callback(null, duplicateUser);
                 } else {
                     var stmt = db.prepare(`INSERT INTO USERS VALUES (?, ?, ?)`);
                     stmt.run(that.nextUserId++, username, password);

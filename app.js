@@ -135,8 +135,8 @@ app.post('/register', (req, res) => {
    } else if (password.length < 3) {
        res.status(406).send(`Password is too short, needs to be atleast 3 characters`);
    } else {
-       userDao.createUser(username, password, (err, user) => {
-           if(!user) {
+       userDao.createUser(username, password, (err, duplicateUser) => {
+           if(!duplicateUser) {
                // new user created successfully
                res.redirect('/login'); 
            } else {

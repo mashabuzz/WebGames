@@ -7,12 +7,14 @@ var url = require('url');
 var bodyParser = require('body-parser');
 var cookieParser = require('cookie-parser');
 var expressSession = require('express-session');
-var sqlite3 = require('sqlite3').verbose();
 var passport = require('passport')
 var passportLocal = require('passport-local');
+var models = require('./models');
 
 var app = express();
-var db = new sqlite3.Database('db/WebGames.db');
+var userDao = new models.UserDao();
+var scoreDao = new models.ScoreDao();
+
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -37,48 +39,25 @@ app.use(expressSession({
 app.use(passport.initialize());
 app.use(passport.session());
 
-var nextUserId;
 
-(function init() {
-    var query = "select max(id) as id from users";
-    db.all(query, (err, rows) => {
-        if (rows.length === 0) {
-            nextUserId = 1;
+passport.use(new passportLocal.Strategy((username, password, done) => {    
+    
+    userDao.getUser(null, username, (err, user) => {
+        if (err) {
+            console(`Error while retrieving User ${username} from db`);
+            done(err, null);
+        } else if (!user) {
+            console.log(`User ${username} does not exist`);
+            done(null, null);
+        } else if (user.password === password) {
+            console.log(`User ${username} is authorized`);
+            done(null, user);
         } else {
-            nextUserId = rows[0].id + 1;
+            console.log(`User ${username} is unauthorized, provided password ${password}, actual password ${user.password}`);
+            done(null, null);
         }
-        console.log(`NextUserId = ${nextUserId}`);
-    });
-})();
-
-
-passport.use(new passportLocal.Strategy((username, password, done) => {
-    // TODO don't store raw password in db    
-    db.serialize(function() {
-       var query = `SELECT id, username, password FROM users WHERE username='${username}'`;
-       console.log(`query = ${query}`);       
-              
-       db.all(query, (err, rows) => {
-           if (rows.length === 0) {
-               console.log(`User ${username} does not exist`);
-               done(null, null);
-           } else {               
-               var row = rows[0];
-               console.log(`row.id = ${row.ID}, row.username=${row.USERNAME}`);
-               if(! err) {
-                   if (row.PASSWORD === password) {     
-                       console.log(`User ${username} is authorized`);  
-                       done(null, {id: row.ID, username: row.USERNAME})
-                   } else {
-                       console.log(`User ${username} is unauthorized`);
-                       done(null, null);
-                   }
-               } else {
-                   done(err, null);
-               }               
-           }
-       });            
-    });
+    });                   
+    
 }));
 
 
@@ -89,14 +68,16 @@ passport.serializeUser((user, done) => {
 
 
 passport.deserializeUser((session, done) => {
+    
     // deserialize user from session
-    db.serialize(function() {
-        var query = `SELECT username FROM USERS WHERE id=${session}`;
-        console.log(`query = ${query}`);
-        db.each(query, (err, row) => {
-            done(null, {id: session, username: row.USERNAME});
-        });
-    });
+    userDao.getUser(session, null, (err, user) => {        
+        if (err) {
+            console(`Error while retrieving User with id ${session} from db`);
+            done(err, null);
+        } else {
+            done(null, user);
+        }
+    });    
 });
 
 
@@ -154,20 +135,15 @@ app.post('/register', (req, res) => {
    } else if (password.length < 3) {
        res.status(406).send(`Password is too short, needs to be atleast 3 characters`);
    } else {
-       db.serialize(() => {           
-           var query = `SELECT id, username, password FROM users WHERE username='${username}'`;
-           console.log(`query = ${query}`);
-           db.all(query, (err, rows) => {
-               if(rows.length === 0) {
-                   var stmt = db.prepare(`INSERT INTO USERS VALUES (?, ?, ?)`);
-                   stmt.run(nextUserId++, username, password);
-                   stmt.finalize();
-                   res.redirect('/login');
-               } else {
-                   res.status(406).send(`Username ${username} already exists`);                   
-               }
-           });
-       });
+       userDao.createUser(username, password, (err, user) => {
+           if(!user) {
+               // new user created successfully
+               res.redirect('/login'); 
+           } else {
+               // the provided username already exists
+               res.status(406).send(`Username ${username} already exists`);  
+           }
+       });       
    }  
 });
 
@@ -177,7 +153,7 @@ app.get('/snake-single-player', (req, res) => {
     if (!req.isAuthenticated()) {
         res.redirect('/login');
     } else {
-        getTopScores(req.user.id, 5, gameName, (data) => {
+        scoreDao.topScores(req.user.id, 5, gameName, (data) => {
             res.render('snake-single-player', {
                 gameName: gameName,
                 user: req.user,
@@ -199,7 +175,7 @@ app.get('/scores', (req, res) => {
         var urlQueryParams = url.parse(req.url, true).query;
         var count = urlQueryParams.count || 5;
         var gameName = urlQueryParams.gameName;        
-        getTopScores(req.user.id, count, gameName, (data) => {
+        scoreDao.topScores(req.user.id, count, gameName, (data) => {
             res.header("Content-Type", "application/json");
             res.send(JSON.stringify({items: data}));
         }); 
@@ -207,22 +183,8 @@ app.get('/scores', (req, res) => {
 });
 
 
-app.post('/scores', (req, res) => {
-    var userName = req.user.id;
-    var gameName = req.body.game;
-    var startTime = req.body.start_time;    
-    var endTime = req.body.end_time;
-    var score = req.body.score;
-    
-    var db = new sqlite3.Database('db/WebGames.db'); 
-    
-    db.serialize(function() {
-        // TODO handle error
-        var stmt = db.prepare('INSERT INTO SCORES VALUES(?, ?, ?, ?, ?)');
-        stmt.run(userName, gameName, startTime, endTime, score);
-        stmt.finalize();
-    });
-        
+app.post('/scores', (req, res) => {    
+    scoreDao.addScore(req.user.id, req.body.game, req.body.start_time, req.body.end_time, req.body.score);        
     res.send('');
 });
 
@@ -230,24 +192,3 @@ app.post('/scores', (req, res) => {
 app.listen(3000, '0.0.0.0', () => {
     console.log('Express app listening on port 3000');
 });
-
-
-function getTopScores(userid, count, gameName, callback) {
-    db.serialize(() => {            
-            var query = `select date(starttime) as date, score as score, (strftime('%s', endtime) - strftime('%s', starttime))` + 
-                            `as duration from scores where userid=${userid} and gamename='${gameName}' order by score desc limit ${count}`;
-            console.log(`query = ${query}`);
-            
-            db.all(query, (err, rows) => {
-                var items = [];
-                for (var i = 0; i < rows.length; i++) {
-                    items.push({
-                        date: rows[i].date,
-                        score: rows[i].score,
-                        duration: rows[i].duration
-                    });
-                }
-                callback(items);
-            });         
-        }); 
-}

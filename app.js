@@ -189,6 +189,6 @@ app.post('/scores', (req, res) => {
 });
 
 
-app.listen(3000, '0.0.0.0', () => {
+app.listen(3000, () => {
     console.log('Express app listening on port 3000');
 });

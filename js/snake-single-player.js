@@ -1,4 +1,4 @@
-define(['utils'], function(utils) {
+define(['utils', 'snake'], function(utils, Snake) {
     
     'use strict';
     
@@ -7,24 +7,20 @@ define(['utils'], function(utils) {
     var canvas;
     var game;
     var ctx;
+    var blockSize = 10;
     var rectComponent;
     
     console.log("load document ready");   
     canvas = document.getElementById("canvas");
     console.log("canvas-width = " + canvas.width + ", canvas-height = " + canvas.height);   
+    
+    (function() {
+        var widthInBlocks = Math.floor(canvas.width / blockSize);
+        var heightInBlocks = Math.floor(canvas.height / blockSize);
+        var totalBlocks = widthInBlocks * heightInBlocks;
+        rectComponent = new utils.RectComponent(blockSize, widthInBlocks, heightInBlocks);  
+    })();  
         
-    var blockSize = 10;
-    var widthInBlocks = Math.floor(canvas.width / blockSize);
-    var heightInBlocks = Math.floor(canvas.height / blockSize);
-    var totalBlocks = widthInBlocks * heightInBlocks;
-    rectComponent = new utils.RectComponent(blockSize, widthInBlocks, heightInBlocks);    
-    
-    var SnakeMoveResults = {
-        NO_INCIDENCE: 0,
-        FOOD_CONSUMED: 1,
-        COLLISION: 2
-    }
-    
     
     var GameState = {
         NOT_STARTED: 0,
@@ -32,101 +28,22 @@ define(['utils'], function(utils) {
         COMPLETED: 2
     }    
     
-    ctx = canvas.getContext("2d");   
+    
+    ctx = canvas.getContext("2d");    
+    
     game = createGame();
     paintScreen();    
-    
-    function Snake(tailBlock, initialLength, color) {
-        
-        this.blocks = [];
-        this.direction = 'r';
-        this.color = color;
-        this.dirSet = [['r', 'l'], ['u', 'd']];
-        this.pendingInstructions = [];
-        
-        this.addInstruction = function (direction) {
-            this.pendingInstructions.push(direction);
-        }
-        
-        for (var i = 0; i < initialLength; i++) {
-            this.blocks.push(tailBlock + i);
-        }  
-        
-        this.move = function (food, obstructions) {
-            // console.log("Moving snake ...");
-            var nextHead;
-            var currentHead = this.blocks[this.blocks.length -1];
-            var currentRow = Math.floor(currentHead / widthInBlocks);
-            var currentCol = currentHead % widthInBlocks;  
-            var pendingDirection = this.pendingInstructions.shift();
-            if (pendingDirection) {
-                this.changeDirection(pendingDirection);
-            }      
-            
-            switch(this.direction) {
-                case 'r':                
-                    currentCol = currentCol + 1 >= widthInBlocks ? 0 : currentCol + 1;
-                    break;
-                case 'l':
-                    currentCol = currentCol -1 < 0 ? widthInBlocks - 1 : currentCol -1;
-                    break;
-                case 'd':
-                    currentRow = currentRow + 1 >= heightInBlocks ? 0 : currentRow + 1;
-                    break;
-                case 'u':
-                    currentRow = currentRow - 1 < 0 ? heightInBlocks - 1 : currentRow - 1;
-            }
-            
-            nextHead = currentRow * widthInBlocks + currentCol;
-            var result;
-            if (nextHead === food) {
-                // TODO : check that the food does not lie on the snake
-                result = SnakeMoveResults.FOOD_CONSUMED;
-                this.blocks.push(nextHead);
-            } else if (this.blocks.indexOf(nextHead) >= 0) {
-                // TODO : this is a naive way of detecting collision
-                // check if we can do it more efficiently
-                result = SnakeMoveResults.COLLISION;
-            } else if (obstructions.has(nextHead)) {
-                // collision with an obstruction
-                result = SnakeMoveResults.COLLISION;
-            } else {
-                this.blocks.shift();
-                this.blocks.push(nextHead);
-                result = SnakeMoveResults.NO_INCIDENCE;   
-            }        
-            return result;
-        }
-        
-        this.changeDirection = function (newDirection) {        
-            var findDirSetIndex = function (direction, dirSet) {
-                for (var i = 0; i < dirSet.length; i++) {
-                    if (dirSet[i].indexOf(direction) >= 0) {
-                        return i;
-                    }
-                }
-                return -1;
-            }
-            var i1 = findDirSetIndex(this.direction, this.dirSet);
-            var i2 = findDirSetIndex(newDirection, this.dirSet);
-            console.log('i1 = ' + i1 + ', i2 = ' + i2);
-            if (i1 !== i2) {
-                this.direction = newDirection;
-                console.log('Changed direction to ' + this.direction);
-            }
-        }
-    }
     
     
     function Game(snake) {
         this.snake = snake;    
         this.startTime = null;
-        this.obstructions = createObstructions();
+        this.obstructions = createObstructions(rectComponent.widthInBlocks, rectComponent.heightInBlocks);
         
         this.createFood = function () {
-            var food = Math.floor(Math.random() * totalBlocks);
-            while(this.obstructions.has(food) || this.snake.blocks.indexOf(food) != -1) {
-                food = Math.floor(Math.random() * totalBlocks);
+            var food = Math.floor(Math.random() * rectComponent.totalBlocks);
+            while(this.obstructions.has(food) || this.snake.containsBlock(food)) {
+                food = Math.floor(Math.random() * rectComponent.totalBlocks);
             }
             return food;
         }
@@ -188,13 +105,18 @@ define(['utils'], function(utils) {
             });        
             
             var refreshSnake = function () {
-                var result = that.snake.move(that.food, that.obstructions);
-                if (result === SnakeMoveResults.FOOD_CONSUMED) {
-                    // food is consumed
-                    that.onFoodConsumed();
-                } else if (result === SnakeMoveResults.COLLISION) {
+                var movement = that.snake.move();
+                var nextHead = movement.next().value;                
+                if (!nextHead || that.obstructions.has(nextHead)) {
+                    // snake has collided with itself or with an obstruction
                     that.onSnakeCollision();
-                }
+                } else if (nextHead === that.food) {
+                    // food consumed
+                    that.onFoodConsumed();
+                    movement.next(true);
+                } else {
+                    movement.next(false);    
+                }                
                 paintScreen();
             }   
             
@@ -207,7 +129,7 @@ define(['utils'], function(utils) {
         var initialLength = 6;
         var snakePosition = rectComponent.twoDtoOneDBlockIndex(2, 2);    
         var color = "#17202A";
-        return new Snake(snakePosition, initialLength, color);
+        return new Snake(snakePosition, initialLength, color, rectComponent);
     }
 
 
@@ -216,7 +138,7 @@ define(['utils'], function(utils) {
     }
 
 
-    function createObstructions() {
+    function createObstructions(widthInBlocks, heightInBlocks) {
         // TODO simplify    
         var width = Math.floor(widthInBlocks / 7);
         var r1, r2, r3, r4;
@@ -267,32 +189,24 @@ define(['utils'], function(utils) {
 
 
     function paintScreen() {
-        
-        function paintRect(color, x, y, w, h) {
-            ctx.fillStyle = color;
-            ctx.fillRect(x, y, w, h);
-        }
-        
+                
         // Draw the canvas
-        paintRect("#FAFAFA", 0, 0, canvas.width, canvas.height);
+        utils.paintRect(ctx, "#FAFAFA", 0, 0, canvas.width, canvas.height);
         
         // Draw the snake
         var snake = game.snake;
-        snake.blocks.forEach(function (blockIndex) {
-            var p = rectComponent.blockIndexToCoordinate(blockIndex);
-            paintRect(snake.color, p.x, p.y, blockSize, blockSize);
-        });
+        snake.paint(ctx);
         
         // Draw obstructions
         game.obstructions.forEach(function (blockIndex) {
             var p = rectComponent.blockIndexToCoordinate(blockIndex);
-            paintRect("#1F618D", p.x, p.y, blockSize, blockSize);
+            utils.paintRect(ctx, "#1F618D", p.x, p.y, blockSize, blockSize);
         });
             
         if (game.state !== GameState.NOT_STARTED) {
             // Draw the food
             var p = rectComponent.blockIndexToCoordinate(game.food);
-            paintRect('#1D8348', p.x, p.y, blockSize, blockSize);
+            utils.paintRect(ctx, '#1D8348', p.x, p.y, blockSize, blockSize);
             
             // Draw the score
             ctx.font = "15px Consolas";

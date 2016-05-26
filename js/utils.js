@@ -1,5 +1,6 @@
 define([], function () {
     
+    'use strict';
     console.log("Loading utils.js");
     
     function Point(x, y) {
@@ -16,7 +17,7 @@ define([], function () {
         
         this.blockSize = blockSize;
         this.widthInBlocks = widthInBlocks;
-        this.heightInBlocks;
+        this.heightInBlocks = heightInBlocks;
         this.totalBlocks = widthInBlocks * heightInBlocks;
         
         this.blockIndexToCoordinate = (blockIndex) => {
@@ -34,6 +35,11 @@ define([], function () {
         }
     }
     
-    return {Point: Point, RectComponent: RectComponent};
+    function paintRect(ctx, color, x, y, w, h) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, w, h);
+    }
+    
+    return {Point: Point, RectComponent: RectComponent, paintRect: paintRect};
         
 });

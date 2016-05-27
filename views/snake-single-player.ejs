@@ -26,7 +26,7 @@
     Click on the start button to start the game
     </p>
     <canvas id="canvas" width="450" height="450"></canvas><br>
-    <button id="startButton" onclick="startGame()">start</button>    
+    <button id="startButton" onclick="onStart()">start</button>    
 </div>
 <br>
 <br>
@@ -53,14 +53,28 @@
 
 <script src="jquery/dist/jquery.js"></script>
 <script src="bootstrap/dist/js/bootstrap.js"></script>
-<script src="snake-single-player.js"></script>
+<script data-main="" src="requirejs/require.js"></script>
 
 <script>
 
-$(document).ready(function() {
+require.config({
+    paths: {
+        'utils': 'utils',
+        'snake': 'snake',
+        'snake-game': 'snake-game',
+        'snake-single-player': 'snake-single-player'
+    }
+});
 
-    onLoad();
+</script>
+
+<script>
+
+var onStart;
     
+require(["snake-single-player"], function(startGame){
+    console.log("loaded snake-single-player.js");
+    onStart = startGame;
 });
 
 </script>

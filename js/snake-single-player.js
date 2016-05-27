@@ -1,17 +1,15 @@
-define(['utils', 'snake'], function(utils, Snake) {
+define(['utils', 'snake', 'snake-game'], function(utils, Snake, snake_game) {
     
     'use strict';
     
-    console.log("loading snake-single-player.js");
+    var SnakeGame = snake_game.SnakeGame;
+    var GameState = snake_game.GameState;
     
-    var canvas;
-    var game;
-    var ctx;
     var blockSize = 10;
     var rectComponent;
     
     console.log("load document ready");   
-    canvas = document.getElementById("canvas");
+    var canvas = document.getElementById("canvas");
     console.log("canvas-width = " + canvas.width + ", canvas-height = " + canvas.height);   
     
     (function() {
@@ -21,125 +19,43 @@ define(['utils', 'snake'], function(utils, Snake) {
         rectComponent = new utils.RectComponent(blockSize, widthInBlocks, heightInBlocks);  
     })();  
         
+    var ctx = canvas.getContext("2d");    
     
-    var GameState = {
-        NOT_STARTED: 0,
-        STARTED: 1,
-        COMPLETED: 2
-    }    
-    
-    
-    ctx = canvas.getContext("2d");    
-    
-    game = createGame();
-    paintScreen();    
-    
-    
-    function Game(snake) {
-        this.snake = snake;    
-        this.startTime = null;
-        this.obstructions = createObstructions(rectComponent.widthInBlocks, rectComponent.heightInBlocks);
+    var colours = {
+            background: "#FAFAFA",
+            snake: "#17202A",
+            obstruction: "#1F618D",
+            food: "#1D8348"
+    };  
         
-        this.createFood = function () {
-            var food = Math.floor(Math.random() * rectComponent.totalBlocks);
-            while(this.obstructions.has(food) || this.snake.containsBlock(food)) {
-                food = Math.floor(Math.random() * rectComponent.totalBlocks);
-            }
-            return food;
-        }
-            
-        this.food = this.createFood();  // food is represented by an integer (the block index of the food block)
-        this.score = 0;
-        this.numFoodConsumed = 0;
-        this.state = GameState.NOT_STARTED;
-        this.jobId = -1;   
-        
-        this.onFoodConsumed = function () {
-            this.numFoodConsumed += 1;
-            this.score += this.numFoodConsumed;
-            this.food = this.createFood();
-        }
-        
-        this.onSnakeCollision = function () {
-            clearInterval(this.jobId);
-            this.state = GameState.COMPLETED;        
-            console.log("GAME END");
-            console.log("score = " + this.score);
-            // display startGame button
-            document.getElementById('startButton').style.visibility = '';
-            postScoreToServer('rahul', this.score, this.startTime, new Date());
-        }
-        
-        this.startGame = function () {
-            this.startTime = new Date();
-            // Add key listeners
-            this.state = GameState.STARTED;
-            
-            // hide the startGame button
-            document.getElementById('startButton').style.visibility = 'hidden';
-            
-            var that = this;
-            document.addEventListener('keydown', function (event) {
-                switch(event.keyCode) {
-                    case 37:
-                        // left
-                        console.log('Left key pressed');
-                        that.snake.addInstruction('l');
-                        break;
-                    case 39:
-                        // right
-                        console.log('Right key pressed');
-                        that.snake.addInstruction('r');
-                        break;
-                    case 38:
-                        // up
-                        console.log('Up key pressed');
-                        that.snake.addInstruction('u');
-                        break;
-                    case 40:
-                        // down
-                        console.log('Down key pressed');
-                        that.snake.addInstruction('d');
-                        break;
-                } 
-            });        
-            
-            var refreshSnake = function () {
-                var movement = that.snake.move();
-                var nextHead = movement.next().value;                
-                if (!nextHead || that.obstructions.has(nextHead)) {
-                    // snake has collided with itself or with an obstruction
-                    that.onSnakeCollision();
-                } else if (nextHead === that.food) {
-                    // food consumed
-                    that.onFoodConsumed();
-                    movement.next(true);
-                } else {
-                    movement.next(false);    
-                }                
-                paintScreen();
-            }   
-            
-            this.jobId = setInterval(refreshSnake, 100);     
-        }
-    }    
-   
-   
-    function createSnake() {
-        var initialLength = 6;
-        var snakePosition = rectComponent.twoDtoOneDBlockIndex(2, 2);    
-        var color = "#17202A";
-        return new Snake(snakePosition, initialLength, color, rectComponent);
-    }
-
+    var fonts = {
+            score: "15px Consolas",
+            gameover: "30px Arial"
+    }; 
+    
+    var game = createGame();
+    game.paint(ctx, colours, fonts);          
 
     function createGame() {
-        return new Game(createSnake());
+        
+        function createSnake() {
+            var initialLength = 6;
+            var tailBlock = rectComponent.twoDtoOneDBlockIndex(2, 2);
+            var blocks = [];    
+            for (var i = 0; i < initialLength; i++) {
+                blocks.push(tailBlock + i);
+            }    
+            return new Snake(blocks, rectComponent);
+        }
+        
+        return new SnakeGame(createSnake(), createObstructions(), rectComponent);
     }
 
 
-    function createObstructions(widthInBlocks, heightInBlocks) {
+    function createObstructions() {
         // TODO simplify    
+        var widthInBlocks = rectComponent.widthInBlocks;
+        var heightInBlocks = rectComponent.heightInBlocks;
         var width = Math.floor(widthInBlocks / 7);
         var r1, r2, r3, r4;
         r1 = Math.floor (1.5 * heightInBlocks / 8);
@@ -187,46 +103,12 @@ define(['utils', 'snake'], function(utils, Snake) {
         return s1;    
     }
 
-
-    function paintScreen() {
-                
-        // Draw the canvas
-        utils.paintRect(ctx, "#FAFAFA", 0, 0, canvas.width, canvas.height);
-        
-        // Draw the snake
-        var snake = game.snake;
-        snake.paint(ctx);
-        
-        // Draw obstructions
-        game.obstructions.forEach(function (blockIndex) {
-            var p = rectComponent.blockIndexToCoordinate(blockIndex);
-            utils.paintRect(ctx, "#1F618D", p.x, p.y, blockSize, blockSize);
-        });
-            
-        if (game.state !== GameState.NOT_STARTED) {
-            // Draw the food
-            var p = rectComponent.blockIndexToCoordinate(game.food);
-            utils.paintRect(ctx, '#1D8348', p.x, p.y, blockSize, blockSize);
-            
-            // Draw the score
-            ctx.font = "15px Consolas";
-            ctx.fillText("SCORE: " + game.score, 350, 40);        
-        }    
-        
-        if (game.state === GameState.COMPLETED) {
-            // Draw GAME OVER
-            ctx.font = "30px Arial";
-            ctx.fillText("GAME OVER", 130, 230);
-        }
-    }
-
-
-    function postScoreToServer(userId, score, startTime, endTime) {    
+    function postScoreToServer(score, startTime, endTime) {    
         $.ajax({
             type: 'POST',              
             url: 'scores',
             contentType: 'application/json',  
-            data: JSON.stringify({'score': score, 'userId': userId, 'game': 'vintage-snake', 'start_time': startTime, 'end_time': endTime}),
+            data: JSON.stringify({'score': score, 'game': 'vintage-snake', 'start_time': startTime, 'end_time': endTime}),
             success: function() {
                 console.log('Successfully posted data to server');
             }
@@ -235,11 +117,30 @@ define(['utils', 'snake'], function(utils, Snake) {
 
 
     function startGame() {    
+        console.log("start game ...");
+        
+        // hide the startGame button
+        document.getElementById('startButton').style.visibility = 'hidden';
+        
         if (game.state === GameState.COMPLETED) {
             // create new game
             game = createGame();
         }    
         game.startGame();
+        
+        var jobId = setInterval(refresh, 100);
+        
+        function refresh() {
+            game.stepNext();
+            game.paint(ctx, colours, fonts);
+            
+            if (game.state === GameState.COMPLETED) {
+                clearInterval(jobId);   
+                // display startGame button
+                document.getElementById('startButton').style.visibility = '';              
+                postScoreToServer(game.score, game.startTime, new Date());
+            }
+        }       
     } 
     
     return startGame;  

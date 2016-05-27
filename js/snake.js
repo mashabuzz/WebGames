@@ -2,9 +2,9 @@ define(['utils'], function(utils) {
     
     'use strict';
     
-    function Snake(tailBlock, initialLength, color, rectComponent) {
+    function Snake(blocks, rectComponent) {
         
-        this._blocks = [];
+        this._blocks = blocks;
         this._direction = 'r';        
         this._dirSet = [['r', 'l'], ['u', 'd']];
         this._pendingInstructions = [];
@@ -16,10 +16,7 @@ define(['utils'], function(utils) {
         this.addInstruction = function (direction) {
             this._pendingInstructions.push(direction);
         }
-        
-        for (var i = 0; i < initialLength; i++) {
-            this._blocks.push(tailBlock + i);
-        }  
+          
         
         this.changeDirection = function(newDirection) {        
             var findDirSetIndex = function (direction, dirSet) {
@@ -81,10 +78,10 @@ define(['utils'], function(utils) {
             }
         }
         
-        this.paint = function(ctx) {            
+        this.paint = function(ctx, colour) {            
             this._blocks.forEach(function (blockIndex) {
                 var p = rectComponent.blockIndexToCoordinate(blockIndex);
-                utils.paintRect(ctx, color, p.x, p.y, rectComponent.blockSize, rectComponent.blockSize);
+                utils.paintRect(ctx, colour, p.x, p.y, rectComponent.blockSize, rectComponent.blockSize);
             });
         }
     }

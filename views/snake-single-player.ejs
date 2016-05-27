@@ -61,7 +61,8 @@ require.config({
     paths: {
         'utils': 'utils',
         'snake': 'snake',
-        'snake_single_player': 'snake-single-player'
+        'snake-game': 'snake-game',
+        'snake-single-player': 'snake-single-player'
     }
 });
 
@@ -71,7 +72,7 @@ require.config({
 
 var onStart;
     
-require(["snake_single_player"], function(startGame){
+require(["snake-single-player"], function(startGame){
     console.log("loaded snake-single-player.js");
     onStart = startGame;
 });

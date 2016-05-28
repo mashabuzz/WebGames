@@ -74,12 +74,15 @@ define(['utils'], function(utils) {
             
         this.stepNext = function () {
             var movement = this.snake.move();
-            var nextHead = movement.next().value;                
-            if (!nextHead || this.obstructions.has(nextHead)) {
-                // snake has collided with itself or with an obstruction
+            var nextHead = movement.next().value;   
+            if (nextHead === null) {
+                console.log("Snake has collided with itself");
+                this.onSnakeCollision(); 
+            } else if (this.obstructions.has(nextHead)) {            
+                console.log("Snake has collided with an obstruction");
                 this.onSnakeCollision();                
             } else if (nextHead === this.food) {
-                // food consumed
+                console.log("Snake has consumed food");
                 this.onFoodConsumed();
                 movement.next(true);
             } else {

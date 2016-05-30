@@ -3,8 +3,8 @@ define(['utils', 'snake', 'snake-game'], function(utils, Snake, snake_game) {
     'use strict';
     
     var SnakeGame = snake_game.SnakeGame;
-    var GameState = snake_game.GameState;
-    
+    var GameState = snake_game.GameState;    
+        
     var blockSize = 10;
     var rectComponent;
     
@@ -20,6 +20,7 @@ define(['utils', 'snake', 'snake-game'], function(utils, Snake, snake_game) {
     })();  
         
     var ctx = canvas.getContext("2d");    
+    var obstructions = createObstructions();
     
     var colours = {
             background: "#FAFAFA",
@@ -33,9 +34,32 @@ define(['utils', 'snake', 'snake-game'], function(utils, Snake, snake_game) {
             gameover: "30px Arial"
     }; 
     
-    var game = createGame();
-    game.paint(ctx, colours, fonts);          
-
+    
+    var socket;    
+        
+    var game;
+    
+    
+    function load(isPlayer, playerName) {        
+        // The game can be loaded either as a player or as an observer             
+        socket = io('/single-player-snake');
+        socket.on('connect', () => {
+            socket.emit('room', playerName); // join the room    
+        });
+        
+        if (isPlayer) {
+            game = createGame();
+            game.paint(ctx, colours, fonts);
+        } else {            
+            socket.on('data_msg', (msg) => {
+                var snake = new Snake(msg.blocks, rectComponent);
+                var game = new SnakeGame(snake, obstructions, rectComponent, msg.score, msg.state, msg.food);
+                game.paint(ctx, colours, fonts);
+            });
+        }
+    }
+    
+    
     function createGame() {
         
         function createSnake() {
@@ -48,7 +72,7 @@ define(['utils', 'snake', 'snake-game'], function(utils, Snake, snake_game) {
             return new Snake(blocks, rectComponent);
         }
         
-        return new SnakeGame(createSnake(), createObstructions(), rectComponent);
+        return new SnakeGame(createSnake(), obstructions, rectComponent);
     }
 
 
@@ -102,6 +126,7 @@ define(['utils', 'snake', 'snake-game'], function(utils, Snake, snake_game) {
         }
         return s1;    
     }
+    
 
     function postScoreToServer(score, startTime, endTime) {    
         $.ajax({
@@ -134,6 +159,8 @@ define(['utils', 'snake', 'snake-game'], function(utils, Snake, snake_game) {
             game.stepNext();
             game.paint(ctx, colours, fonts);
             
+            socket.emit('data_msg', {blocks: game.snake._blocks, score: game.score, state: game.state, food: game.food});            
+            
             if (game.state === GameState.COMPLETED) {
                 clearInterval(jobId);   
                 // display startGame button
@@ -143,6 +170,5 @@ define(['utils', 'snake', 'snake-game'], function(utils, Snake, snake_game) {
         }       
     } 
     
-    return startGame;  
-    
+    return {load: load, startGame: startGame};    
 });

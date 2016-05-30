@@ -65,8 +65,7 @@ define(['utils'], function(utils) {
                     currentRow = currentRow - 1 < 0 ? rectComponent.heightInBlocks - 1 : currentRow - 1;
             }
             
-            nextHead = rectComponent.twoDtoOneDBlockIndex(currentRow, currentCol);
-            console.log(`nextHead = ${nextHead}`);
+            nextHead = rectComponent.twoDtoOneDBlockIndex(currentRow, currentCol);            
             
             if (this._blocks.indexOf(nextHead) >= 0) {
                 return null;

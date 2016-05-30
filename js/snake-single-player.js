@@ -154,12 +154,15 @@ define(['utils', 'snake', 'snake-game'], function(utils, Snake, snake_game) {
         game.startGame();
         
         var jobId = setInterval(refresh, 100);
+        var broadcast = document.getElementById("broadcast");
         
-        function refresh() {
+        function refresh() {            
             game.stepNext();
             game.paint(ctx, colours, fonts);
             
-            socket.emit('data_msg', {blocks: game.snake._blocks, score: game.score, state: game.state, food: game.food});            
+            if (broadcast.checked) {
+                socket.emit('data_msg', {blocks: game.snake._blocks, score: game.score, state: game.state, food: game.food}); 
+            }
             
             if (game.state === GameState.COMPLETED) {
                 clearInterval(jobId);   

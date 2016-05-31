@@ -8,7 +8,7 @@ define(['utils'], function(utils) {
         COMPLETED: 2
     }   
     
-    function SnakeGame(snake, obstructions, rectComponent) {
+    function SnakeGame(snake, obstructions, rectComponent, score, state, food) {
         this.snake = snake;    
         this.startTime = null;  // to be set when the game starts
         this.obstructions = obstructions;
@@ -21,10 +21,10 @@ define(['utils'], function(utils) {
             return food;
         }
             
-        this.food = this.createFood();  // food is represented by an integer (the block index of the food block)
-        this.score = 0;
+        this.food = food || this.createFood();  // food is represented by an integer (the block index of the food block)
+        this.score = score || 0;
         this.numFoodConsumed = 0;
-        this.state = GameState.NOT_STARTED;
+        this.state = state || GameState.NOT_STARTED;
         this.jobId = -1;   
         
         this.onFoodConsumed = function () {

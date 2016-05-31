@@ -2,8 +2,8 @@
 
 var express = require('express');
 var path = require('path');
-var http = require('http');
-var url = require('url');
+var socketIO = require('socket.io');
+
 var bodyParser = require('body-parser');
 var cookieParser = require('cookie-parser');
 var expressSession = require('express-session');
@@ -12,16 +12,21 @@ var passportLocal = require('passport-local');
 var models = require('./models');
 
 var app = express();
+var http = require('http').Server(app);
+
+var io = new socketIO(http);
 var userDao = new models.UserDao();
 var scoreDao = new models.ScoreDao();
+
+
+app.use(express.static(path.join(__dirname, 'bower_components')));
+app.use(express.static(path.join(__dirname, 'js')));
+app.use(express.static(path.join(__dirname, 'css')));
 
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-app.use(express.static(path.join(__dirname, 'bower_components')));
-app.use(express.static(path.join(__dirname, 'js')));
-app.use(express.static(path.join(__dirname, 'css')));
 
 // parse application/json
 app.use(bodyParser.json())
@@ -86,7 +91,7 @@ app.get('/', (req, res) => {
         res.redirect('/login');
     } else {
         res.render('index', {user: req.user});
-    }    
+    }
 });
 
 
@@ -157,10 +162,27 @@ app.get('/snake-single-player', (req, res) => {
             res.render('snake-single-player', {
                 gameName: gameName,
                 user: req.user,
-                rows: data
+                rows: data,
+                isPlayer: true, 
+                playerName: req.user.username
             });
         });
     }        
+});
+
+
+app.get('/snake-single-player/:playername', (req, res) => {
+    var gameName = 'vintage-snake';
+    if (!req.isAuthenticated()) {
+        res.redirect('/login');        
+    } else {
+        res.render('snake-single-player', {
+            gameName: gameName,
+            user: req.user,            
+            isPlayer: false, 
+            playerName: req.params.playername
+        });
+    }
 });
 
 
@@ -189,6 +211,29 @@ app.post('/scores', (req, res) => {
 });
 
 
-app.listen(3000, () => {
+http.listen(3000, () => {
     console.log('Express app listening on port 3000');
+});
+
+
+var io = new socketIO(http);
+var nsp = io.of('/single-player-snake');
+
+nsp.on('connection', (socket) => {
+   
+   console.log('A user connected');   
+   
+   socket.on('disconnect', () => {
+      console.log('user disconnected'); 
+   });
+   
+   socket.on('room', (room) => {
+       socket.join(room);
+       socket.room = room;
+       console.log(`A user joined room = ${room} in snake-single-player`);
+   }); 
+   
+   socket.on('data_msg', (msg) => {      
+      socket.broadcast.to(socket.room).emit('data_msg', msg);
+   });
 });
